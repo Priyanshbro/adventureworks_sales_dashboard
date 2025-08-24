@@ -1,77 +1,83 @@
 import React, { useState } from "react";
 
-const Login = () => {
+export default function Login({ onLogin, error }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [localError, setLocalError] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (username === "admin" && password === "password123") {
-      const token = "mock-jwt-token"; // Replace with real token generation in production
-      localStorage.setItem("token", token);
-      window.location.href = "/dashboard";
-    } else {
-      alert("Invalid credentials");
+    setLocalError(null);
+    if (!username || !password) {
+      setLocalError("Please enter both username and password.");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await onLogin?.(username.trim(), password);
+    } catch (err) {
+      setLocalError(err?.message || "Login failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+      if (!remember) setPassword("");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 p-10 rounded-2xl shadow-2xl w-full max-w-md flex flex-col items-center">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2 text-center">
-          Welcome to your
-        </h1>
-        <h2 className="text-2xl font-semibold text-blue-600 dark:text-blue-400 mb-8 text-center">
-          Sales Performance Dashboard
-        </h2>
-        <form onSubmit={handleSubmit} className="w-full">
-          <div className="mb-5">
-            <label
-              htmlFor="username"
-              className="block text-gray-700 dark:text-gray-200 font-medium mb-2"
-            >
-              Username
-            </label>
+    <div className="login-page">
+      <div className="login-card">
+        <div className="brand">
+          <div className="brand-mark" aria-hidden>📊</div>
+          <div className="brand-text">
+            <h1>Welcome to your Sales Performance Dashboard</h1>
+            <p>Sign in to view KPIs, top reps, and trends.</p>
+          </div>
+        </div>
+
+        <form className="login-form" onSubmit={handleSubmit} noValidate>
+          {(localError || error) && <div className="alert">{localError || error}</div>}
+
+          <label className="field">
+            <span>Username</span>
             <input
-              id="username"
-              className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
               type="text"
-              placeholder="Enter your username"
+              autoComplete="username"
+              placeholder="e.g. admin"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
             />
-          </div>
-          <div className="mb-6">
-            <label
-              htmlFor="password"
-              className="block text-gray-700 dark:text-gray-200 font-medium mb-2"
-            >
-              Password
-            </label>
+          </label>
+
+          <label className="field">
+            <span>Password</span>
             <input
-              id="password"
-              className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
               type="password"
-              placeholder="Enter your password"
+              autoComplete="current-password"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
             />
+          </label>
+
+          <div className="row between">
+            <label className="checkbox">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              <span>Remember me</span>
+            </label>
+            <a className="muted" href="#" onClick={(e) => e.preventDefault()}>
+              Forgot password?
+            </a>
           </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white text-lg font-semibold py-3 rounded-lg shadow-lg hover:bg-blue-700 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            Log In
+
+          <button className="primary-btn" disabled={submitting}>
+            {submitting ? "Signing in…" : "Sign in"}
           </button>
-          <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
-            Hint: <span className="font-mono">admin / password123</span>
-          </div>
+
+          <p className="foot-note">Hint: <code>admin</code> / <code>password123</code></p>
         </form>
       </div>
     </div>
   );
-};
-
-export default Login;
+}
