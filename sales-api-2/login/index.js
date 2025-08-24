@@ -28,8 +28,8 @@ module.exports = async function (context, req) {
     }
 
     // Allow env-based creds, but default to admin/password123 for your case study
-    const VALID_USER = process.env.APP_USER || "admin";
-    const VALID_PASS = process.env.APP_PASS || "password123";
+    const VALID_USER = "admin";
+    const VALID_PASS = "password123";
 
     if (username !== VALID_USER || password !== VALID_PASS) {
       context.res = {
@@ -40,16 +40,7 @@ module.exports = async function (context, req) {
       return;
     }
 
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      context.log.error("Missing JWT_SECRET environment variable");
-      context.res = {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-        body: { error: "Server misconfiguration: missing JWT_SECRET" },
-      };
-      return;
-    }
+    const secret = "myhardcodedsecret123";
 
     const token = jwt.sign({ sub: username }, secret, { expiresIn: "2h" });
 

@@ -33,7 +33,7 @@ module.exports = async function (context, req) {
     // ---- Auth (JWT) ----
     const auth = req.headers["authorization"] || "";
     if (!auth.startsWith("Bearer ")) throw new Error("Missing token");
-    jwt.verify(auth.slice(7), process.env.JWT_SECRET);
+    jwt.verify(auth.slice(7), "myhardcodedsecret123");
 
     // ---- Inputs ----
     const monthYear =
