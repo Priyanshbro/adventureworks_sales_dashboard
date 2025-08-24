@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 
-function addCors(res){
+function addCors(res) {
   res.headers = res.headers || {};
   res.headers["Access-Control-Allow-Origin"] = process.env.ALLOWED_ORIGIN || "*";
   res.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type";
@@ -8,22 +8,63 @@ function addCors(res){
 }
 
 module.exports = async function (context, req) {
+  // CORS preflight
   if (req.method === "OPTIONS") {
     context.res = { status: 200 };
     addCors(context.res);
     return;
   }
+
   try {
     const { username, password } = req.body || {};
-    if (username === process.env.APP_USER && password === process.env.APP_PASS) {
-      const token = jwt.sign({ sub: username }, process.env.JWT_SECRET, { expiresIn: "2h" });
-      context.res = { status: 200, headers: { "Content-Type": "application/json" }, body: { token } };
-    } else {
-      context.res = { status: 401, headers: { "Content-Type": "application/json" }, body: { error: "Invalid credentials" } };
+
+    if (!username || !password) {
+      context.res = {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+        body: { error: "Username and password are required" },
+      };
+      return;
     }
+
+    // Allow env-based creds, but default to admin/password123 for your case study
+    const VALID_USER = process.env.APP_USER || "admin";
+    const VALID_PASS = process.env.APP_PASS || "password123";
+
+    if (username !== VALID_USER || password !== VALID_PASS) {
+      context.res = {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+        body: { error: "Invalid credentials" },
+      };
+      return;
+    }
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      context.log.error("Missing JWT_SECRET environment variable");
+      context.res = {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+        body: { error: "Server misconfiguration: missing JWT_SECRET" },
+      };
+      return;
+    }
+
+    const token = jwt.sign({ sub: username }, secret, { expiresIn: "2h" });
+
+    context.res = {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: { token },
+    };
   } catch (err) {
     context.log.error(err);
-    context.res = { status: 400, headers: { "Content-Type": "application/json" }, body: { error: err.message || "Bad Request" } };
+    context.res = {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+      body: { error: err.message || "Bad Request" },
+    };
   } finally {
     addCors(context.res);
   }
