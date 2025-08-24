@@ -1,1 +1,19 @@
-.vscode/
+# OS
+.DS_Store
+
+# Node
+node_modules
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist
+build
+
+# Editor
+.vscode
+
+# Env
+.env
+.env.*
