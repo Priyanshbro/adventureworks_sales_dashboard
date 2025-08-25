@@ -103,7 +103,7 @@ export default function Dashboard({ auth }) {
   const [dark, setDark] = useState(true);
 
   const [top, setTop] = useState([]);
-  const [bottomHistory, setBottomHistory] = useState([]);
+  // Removed: bottomHistory state
   const [regions, setRegions] = useState([]);
   const [total, setTotal] = useState(0);
 
@@ -147,21 +147,18 @@ export default function Dashboard({ auth }) {
     setErr("");
     setLoading(true);
     try {
-      // Fetch top, total, region, and bottom history
-      const [t, tot, reg, bh] = await Promise.all([
+      // Fetch top, total, region only
+      const [t, tot, reg] = await Promise.all([
         apiFetch(`/api/sales?mode=top`, monthYear),
         apiFetch(`/api/sales?mode=total`, monthYear),
         apiFetch(`/api/sales?mode=region`, monthYear),
-        apiFetch(`/api/sales?mode=bottomhistory`, monthYear),
       ]);
       setTop(Array.isArray(t) ? t : []);
-      setBottomHistory(Array.isArray(bh) ? bh : []);
       setTotal(Number(tot?.[0]?.TotalSales ?? 0));
       setRegions(Array.isArray(reg) ? reg : []);
     } catch (e) {
       setErr(e.message || "Failed to load data");
       setTop([]);
-      setBottomHistory([]);
       setTotal(0);
       setRegions([]);
     } finally {
@@ -284,36 +281,7 @@ export default function Dashboard({ auth }) {
             </div>
           </div>
 
-          {/* Bottom 5 as table with previous 2 months sales and % change */}
-          <div className="dashboard-card">
-            <div className="dashboard-section-title">Bottom 5 Sales Representatives</div>
-            <div className="dashboard-section-sub">Current, previous 2 months, and % change • {monthYear}</div>
-            <table className="dashboard-table" style={{ width: "100%", marginTop: 16 }}>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Current Month Sales</th>
-                  <th>Previous Month Sales</th>
-                  <th>Two Months Ago Sales</th>
-                  <th>% Change (Prev → Current)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bottomHistory.map(rep => {
-                  const percentChange = rep.PrevSales === 0 ? "N/A" : (((rep.CurrentSales - rep.PrevSales) / rep.PrevSales) * 100).toFixed(1) + "%";
-                  return (
-                    <tr key={rep.SalesRepID}>
-                      <td>{rep.FullName}</td>
-                      <td>{currency(rep.CurrentSales)}</td>
-                      <td>{currency(rep.PrevSales)}</td>
-                      <td>{currency(rep.Prev2Sales)}</td>
-                      <td>{percentChange}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {/* Removed: Bottom 5 reps table and all related logic */}
         </main>
       </div>
 
