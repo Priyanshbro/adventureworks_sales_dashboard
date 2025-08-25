@@ -121,11 +121,7 @@ export default function Dashboard({ auth }) {
   const subText = "dashboard-kpi-sub";
 
   const repTooltip = {
-    formatter: (v, n, payloadArr) => {
-      const payload = payloadArr && payloadArr[0] && payloadArr[0].payload;
-      const cc = payload?.CustomerCount ?? null;
-      return [`${currency(Number(v))} | Customers: ${cc != null ? cc : "-"}`, n];
-    },
+    formatter: (v, n) => [`${currency(Number(v))}`, n],
     contentStyle: {
       background: dark ? "#0b1220" : "#ffffff",
       color: dark ? "#e2e8f0" : "#0f172a",
