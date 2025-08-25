@@ -2,12 +2,6 @@
 
 A professional sales performance dashboard built with React (frontend), Azure Functions (Node.js backend), and Azure SQL Database.
 
-## Features
-- Simple login (no JWT)
-- Month selector (July 2017–May 2020)
-- Top sales reps bar chart
-- Top region and KPIs
-- Modern, card-like UI
 
 ## Setup Instructions
 
@@ -71,4 +65,4 @@ npm run dev
 MIT
 
 ## Author
-Priyanshbro
+Priyansh Pradhan
