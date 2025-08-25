@@ -12,6 +12,17 @@ function clearToken() { localStorage.removeItem(TOKEN_KEY); }
 function Protected({ children }) {
   const token = getToken();
   if (!token) return <Navigate to="/login" replace />;
+  try {
+    // Optionally, decode and check token expiration here
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload.exp && Date.now() / 1000 > payload.exp) {
+      clearToken();
+      return <Navigate to="/login" replace />;
+    }
+  } catch {
+    clearToken();
+    return <Navigate to="/login" replace />;
+  }
   return children;
 }
 
