@@ -87,12 +87,23 @@ async function apiFetch(path, monthYear) {
 
 // ---------- main ----------
 export default function Dashboard({ auth }) {
-  const monthNow = useMonthNow();
-  const [monthYear, setMonthYear] = useState(monthNow);
+  // Hardcoded months July 2017 to May 2020
+  const allowedMonths = useMemo(() => {
+    const months = [];
+    let d = new Date(2017, 6, 1); // July 2017
+    const end = new Date(2020, 4, 1); // May 2020
+    while (d <= end) {
+      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      months.push(val);
+      d.setMonth(d.getMonth() + 1);
+    }
+    return months;
+  }, []);
+  const [monthYear, setMonthYear] = useState(allowedMonths[0]);
   const [dark, setDark] = useState(true);
 
   const [top, setTop] = useState([]);
-  const [bottom, setBottom] = useState([]);
+  const [bottomHistory, setBottomHistory] = useState([]);
   const [regions, setRegions] = useState([]);
   const [total, setTotal] = useState(0);
 
@@ -113,7 +124,7 @@ export default function Dashboard({ auth }) {
     formatter: (v, n, payloadArr) => {
       const payload = payloadArr && payloadArr[0] && payloadArr[0].payload;
       const cc = payload?.CustomerCount ?? null;
-      return [currency(Number(v)), cc != null ? `Revenue • Customers: ${cc}` : n];
+      return [`${currency(Number(v))} | Customers: ${cc != null ? cc : "-"}`, n];
     },
     contentStyle: {
       background: dark ? "#0b1220" : "#ffffff",
@@ -140,21 +151,21 @@ export default function Dashboard({ auth }) {
     setErr("");
     setLoading(true);
     try {
-      // These match your Azure Function: /api/sales?mode=xxx&monthYear=YYYY-MM
-      const [t, b, tot, reg] = await Promise.all([
+      // Fetch top, total, region, and bottom history
+      const [t, tot, reg, bh] = await Promise.all([
         apiFetch(`/api/sales?mode=top`, monthYear),
-        apiFetch(`/api/sales?mode=bottom`, monthYear),
         apiFetch(`/api/sales?mode=total`, monthYear),
         apiFetch(`/api/sales?mode=region`, monthYear),
+        apiFetch(`/api/sales?mode=bottomhistory`, monthYear),
       ]);
       setTop(Array.isArray(t) ? t : []);
-      setBottom(Array.isArray(b) ? b : []);
+      setBottomHistory(Array.isArray(bh) ? bh : []);
       setTotal(Number(tot?.[0]?.TotalSales ?? 0));
       setRegions(Array.isArray(reg) ? reg : []);
     } catch (e) {
       setErr(e.message || "Failed to load data");
       setTop([]);
-      setBottom([]);
+      setBottomHistory([]);
       setTotal(0);
       setRegions([]);
     } finally {
@@ -177,7 +188,11 @@ export default function Dashboard({ auth }) {
           </div>
           <div className="dashboard-controls">
             <label>Period:</label>
-            <input type="month" value={monthYear} onChange={e => setMonthYear(e.target.value)} />
+            <select value={monthYear} onChange={e => setMonthYear(e.target.value)}>
+              {allowedMonths.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
             <button className="dashboard-btn" onClick={loadData}>Refresh</button>
             <button className="dashboard-btn" onClick={() => setDark(v => !v)}>{dark ? "Light mode" : "Dark mode"}</button>
             {auth?.logout && <button className="dashboard-btn" onClick={auth.logout}>Logout</button>}
@@ -273,36 +288,35 @@ export default function Dashboard({ auth }) {
             </div>
           </div>
 
-          {/* Bottom 5 */}
+          {/* Bottom 5 as table with previous 2 months sales and % change */}
           <div className="dashboard-card">
             <div className="dashboard-section-title">Bottom 5 Sales Representatives</div>
-            <div className="dashboard-section-sub">Zeros included • {monthYear}</div>
-            <div style={{ height: 360 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={bottom} margin={{ top: 12, right: 24, bottom: 12, left: 24 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke={gridColor} />
-                  <XAxis
-                    dataKey="FullName"
-                    tick={{ fontSize: 12, fill: axisColor }}
-                    interval={0}
-                    angle={-20}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis
-                    tick={{ fill: axisColor }}
-                    tickFormatter={v => (typeof v === "number" ? `${v / 1000}k` : String(v))}
-                  />
-                  <Tooltip {...repTooltip} />
-                  <Bar
-                    dataKey="TotalRevenue"
-                    fill={colorBottom}
-                    radius={[4, 4, 0, 0]}
-                    onClick={(_, idx) => setSelected(bottom[idx])}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <div className="dashboard-section-sub">Current, previous 2 months, and % change • {monthYear}</div>
+            <table className="dashboard-table" style={{ width: "100%", marginTop: 16 }}>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Current Month Sales</th>
+                  <th>Previous Month Sales</th>
+                  <th>Two Months Ago Sales</th>
+                  <th>% Change (Prev → Current)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bottomHistory.map(rep => {
+                  const percentChange = rep.PrevSales === 0 ? "N/A" : (((rep.CurrentSales - rep.PrevSales) / rep.PrevSales) * 100).toFixed(1) + "%";
+                  return (
+                    <tr key={rep.SalesRepID}>
+                      <td>{rep.FullName}</td>
+                      <td>{currency(rep.CurrentSales)}</td>
+                      <td>{currency(rep.PrevSales)}</td>
+                      <td>{currency(rep.Prev2Sales)}</td>
+                      <td>{percentChange}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </main>
       </div>

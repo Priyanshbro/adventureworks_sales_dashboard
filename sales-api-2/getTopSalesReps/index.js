@@ -43,63 +43,76 @@ module.exports = async function (context, req) {
       throw new Error("Provide ?monthYear=YYYY-MM or ?year=YYYY&month=MM");
     }
 
-    // mode: "top" | "bottom" | "total" | "region"
+    // mode: "top" | "bottom" | "total" | "region" | "bottomhistory"
     const mode = (req.query.mode || "top").toLowerCase();
 
-    // Map mode -> stored procedure name
-    let procName;
-    switch (mode) {
-      case "bottom":
-        // always includes zero-sales reps (your proc is written that way)
-        procName = "dbo.GetBottomSalesRepsByMonth";
-        break;
-      case "total":
-        procName = "dbo.GetTotalSalesByMonth";
-        break;
-      case "region":
-        procName = "dbo.GetSalesByRegionByMonth";
-        break;
-      case "top":
-      default:
-        procName = "dbo.GetTopSalesRepsByMonth";
-        break;
-    }
-
-    // ---- Execute stored procedure ----
-    const cnn = await getPool();
-    const result = await cnn
-      .request()
-      .input("MonthYear", sql.Char(7), monthYear)
-      .execute(procName);
-
-    const raw = result.recordset || [];
-
-    // ---- Normalize output shape for top/bottom; pass-through for others ----
     let body;
-    if (mode === "top" || mode === "bottom") {
-      // Expecting: SalesRepID, FullName, TotalRevenue, CustomerCount
-      body = raw.map((r) => ({
+    const cnn = await getPool();
+    if (mode === "bottomhistory") {
+      // New mode for bottom 5 with previous months' sales
+      // Calculate previous months
+      const [y, m] = monthYear.split("-").map(Number);
+      let prevMonth = new Date(y, m - 2, 1);
+      let prev2Month = new Date(y, m - 3, 1);
+      const prevMonthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, "0")}`;
+      const prev2MonthStr = `${prev2Month.getFullYear()}-${String(prev2Month.getMonth() + 1).padStart(2, "0")}`;
+      const result = await cnn
+        .request()
+        .input("CurrentMonth", sql.Char(7), monthYear)
+        .input("PrevMonth", sql.Char(7), prevMonthStr)
+        .input("Prev2Month", sql.Char(7), prev2MonthStr)
+        .execute("dbo.GetBottomSalesRepsWithHistory");
+      body = (result.recordset || []).map(r => ({
         SalesRepID: Number(r.SalesRepID),
         FullName: r.FullName ?? null,
-        TotalRevenue: r.TotalRevenue != null ? Number(r.TotalRevenue) : 0,
-        CustomerCount: r.CustomerCount != null ? Number(r.CustomerCount) : 0,
+        CurrentSales: r.CurrentSales != null ? Number(r.CurrentSales) : 0,
+        PrevSales: r.PrevSales != null ? Number(r.PrevSales) : 0,
+        Prev2Sales: r.Prev2Sales != null ? Number(r.Prev2Sales) : 0,
       }));
     } else {
-      // For "total": [{ TotalSales: number }]
-      // For "region": [{ RegionKey, RegionName, TotalSales }]
-      // Return as-is but coerce numeric fields
-      if (mode === "total") {
+      // Map mode -> stored procedure name
+      let procName;
+      switch (mode) {
+        case "bottom":
+          procName = "dbo.GetBottomSalesRepsByMonth";
+          break;
+        case "total":
+          procName = "dbo.GetTotalSalesByMonth";
+          break;
+        case "region":
+          procName = "dbo.GetSalesByRegionByMonth";
+          break;
+        case "top":
+        default:
+          procName = "dbo.GetTopSalesRepsByMonth";
+          break;
+      }
+      const result = await cnn
+        .request()
+        .input("MonthYear", sql.Char(7), monthYear)
+        .execute(procName);
+      const raw = result.recordset || [];
+      if (mode === "top" || mode === "bottom") {
         body = raw.map((r) => ({
-          TotalSales: r.TotalSales != null ? Number(r.TotalSales) : 0,
-        }));
-      } else if (mode === "region") {
-        body = raw.map((r) => ({
-          RegionKey: r.RegionKey,
-          RegionName: r.RegionName,
-          TotalSales: r.TotalSales != null ? Number(r.TotalSales) : 0,
+          SalesRepID: Number(r.SalesRepID),
+          FullName: r.FullName ?? null,
+          TotalRevenue: r.TotalRevenue != null ? Number(r.TotalRevenue) : 0,
+          CustomerCount: r.CustomerCount != null ? Number(r.CustomerCount) : 0,
         }));
       } else {
-        body = raw;
+        if (mode === "total") {
+          body = raw.map((r) => ({
+            TotalSales: r.TotalSales != null ? Number(r.TotalSales) : 0,
+          }));
+        } else if (mode === "region") {
+          body = raw.map((r) => ({
+            RegionKey: r.RegionKey,
+            RegionName: r.RegionName,
+            TotalSales: r.TotalSales != null ? Number(r.TotalSales) : 0,
+          }));
+        } else {
+          body = raw;
+        }
       }
     }
 
