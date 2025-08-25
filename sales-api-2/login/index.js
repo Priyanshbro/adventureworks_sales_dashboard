@@ -1,9 +1,9 @@
-const jwt = require("jsonwebtoken");
+// JWT removed for simple login
 
 function addCors(res) {
   res.headers = res.headers || {};
   res.headers["Access-Control-Allow-Origin"] = process.env.ALLOWED_ORIGIN || "*";
-  res.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type";
+  res.headers["Access-Control-Allow-Headers"] = "Content-Type";
   res.headers["Access-Control-Allow-Methods"] = "POST,OPTIONS";
 }
 
@@ -27,7 +27,7 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // Allow env-based creds, but default to admin/password123 for your case study
+    // Hardcoded credentials
     const VALID_USER = "admin";
     const VALID_PASS = "password123";
 
@@ -40,17 +40,13 @@ module.exports = async function (context, req) {
       return;
     }
 
-    const secret = "myhardcodedsecret123";
-
-    const token = jwt.sign({ sub: username }, secret, { expiresIn: "2h" });
-
     context.res = {
       status: 200,
       headers: { "Content-Type": "application/json" },
-      body: { token },
+      body: { success: true, message: "Login successful" },
     };
   } catch (err) {
-    context.log.error(err);
+    context.log && context.log.error && context.log.error(err);
     context.res = {
       status: 400,
       headers: { "Content-Type": "application/json" },

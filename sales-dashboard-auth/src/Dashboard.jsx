@@ -10,8 +10,7 @@ import {
   Tooltip,
 } from "recharts";
 
-const TOKEN_KEY = "auth_token";
-const getToken = () => localStorage.getItem(TOKEN_KEY);
+// No token logic needed
 
 // ---------- UI bits ----------
 function Card({ children, className = "", dark }) {
@@ -56,9 +55,11 @@ const MoneyIcon = () => (
   </svg>
 );
 
-// ---------- helpers ----------
+
 const currency = (n) =>
-  typeof n === "number" ? n.toLocaleString(undefined, { style: "currency", currency: "USD" }) : "-";
+  typeof n === "number"
+    ? n.toLocaleString(undefined, { style: "currency", currency: "USD" })
+    : "-";
 
 function useMonthNow() {
   return useMemo(() => {
@@ -69,14 +70,12 @@ function useMonthNow() {
 }
 
 async function apiFetch(path, monthYear) {
-  const token = getToken();
   const url = new URL(path, window.location.origin);
   if (monthYear) url.searchParams.set("monthYear", monthYear);
 
   const res = await fetch(url.toString(), {
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token || ""}`,
     },
   });
   if (!res.ok) {

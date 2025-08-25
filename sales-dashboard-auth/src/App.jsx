@@ -3,26 +3,14 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-route
 import Login from "./Login.jsx";
 import Dashboard from "./Dashboard.jsx";
 
-const TOKEN_KEY = "auth_token";
+const LOGIN_KEY = "is_logged_in";
 
-function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
-function getToken() { return localStorage.getItem(TOKEN_KEY); }
-function clearToken() { localStorage.removeItem(TOKEN_KEY); }
+function setLoggedIn(val) { localStorage.setItem(LOGIN_KEY, val ? "1" : "0"); }
+function isLoggedIn() { return localStorage.getItem(LOGIN_KEY) === "1"; }
+function clearLogin() { localStorage.removeItem(LOGIN_KEY); }
 
 function Protected({ children }) {
-  const token = getToken();
-  if (!token) return <Navigate to="/login" replace />;
-  try {
-    // Optionally, decode and check token expiration here
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    if (payload.exp && Date.now() / 1000 > payload.exp) {
-      clearToken();
-      return <Navigate to="/login" replace />;
-    }
-  } catch {
-    clearToken();
-    return <Navigate to="/login" replace />;
-  }
+  if (!isLoggedIn()) return <Navigate to="/login" replace />;
   return children;
 }
 
@@ -35,13 +23,11 @@ function LoginRoute() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
-    if (!resp.ok) {
-      const data = await resp.json().catch(() => ({}));
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.success) {
       throw new Error(data?.error || "Login failed");
     }
-    const { token } = await resp.json();
-    if (!token) throw new Error("No token returned from API");
-    setToken(token);
+    setLoggedIn(true);
     navigate("/dashboard", { replace: true });
   };
 
@@ -51,8 +37,8 @@ function LoginRoute() {
 export default function App() {
   const auth = useMemo(
     () => ({
-      token: getToken(),
-      logout: () => { clearToken(); window.location.assign("/login"); },
+      loggedIn: isLoggedIn(),
+      logout: () => { clearLogin(); window.location.assign("/login"); },
     }),
     []
   );
@@ -71,7 +57,7 @@ export default function App() {
         />
         <Route
           path="/"
-          element={getToken() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
+          element={isLoggedIn() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

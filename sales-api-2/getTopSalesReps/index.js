@@ -30,14 +30,7 @@ module.exports = async function (context, req) {
   }
 
   try {
-    // ---- Auth (JWT) ----
-    const auth = req.headers["authorization"] || "";
-    if (!auth.startsWith("Bearer ")) throw new Error("Missing token");
-    try {
-      jwt.verify(auth.slice(7), "myhardcodedsecret123");
-    } catch (err) {
-      throw new Error("Invalid or expired token signature. Please log in again.");
-    }
+  // No authentication required
 
     // ---- Inputs ----
     const monthYear =
